@@ -1,0 +1,123 @@
+[tool.poetry]
+name        = "detecting-motion"
+version     = "1.0.0"
+description = ""
+authors     = ["Gavin1121 <gavin.meyer@mavs.uta.edu>"]
+readme      = "README.md"
+packages    = [{ include = "detecting_motion" }]
+
+[tool.poetry.dependencies]
+python       = ">=3.10,<3.11"
+numpy        = "^1.26.3"
+pyside2      = "^5.15.2.1"
+scikit-video = "^1.1.11"
+
+
+[tool.poetry.group.dev.dependencies]
+black            = "^23.12.1"
+ruff             = "^0.2.1"
+flake8           = "^7.0.0"
+mypy             = "^1.8.0"
+flake8-pyproject = "^1.2.3"
+
+[build-system]
+requires      = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+
+[tool.black]
+line-length    = 100
+target-version = ["py310"]
+
+[tool.ruff]
+fix            = true
+target-version = "py310"
+line-length    = 100
+preview        = true
+cache-dir      = ".cache/.ruff_cache"
+
+lint.select = ["ALL"]
+
+lint.ignore = [
+    "ANN101",  # Missing type annotation for self in method
+    "ANN101",  # Missing type annotation for cls in classmethod
+    "COM812",  # Missing trailing comma in a tuple
+    "D407",    # Dashed underline after section
+    "D415",    # ends-in-punctuation
+    "G004",    # Logging f string
+    "N812",    # Lowercase imported as non lowercase
+    "TRY003",  # Bare except
+    "CPY001",  # Copyright
+    "T201",    # print statement
+    "PLR2004", # numbers in code
+    "N806",    # Variable in function should be lowercase
+    "N803",    # Argument name should be lowercase
+]
+
+lint.extend-ignore = [
+    "AIR",  # AirBnB style guide
+    "DJ",   # Django style guide
+    "EM",   # flake8-error-message
+    "FBT",  # flake8-boolean-truth
+    "NPY",  # NumPy style guide
+    "PD",   # pandas style guide
+    "SLOT", # flake8-slot
+]
+
+[tool.ruff.lint.flake8-annotations]
+suppress-dummy-args = true
+
+[tool.ruff.lint.flake8-quotes]
+avoid-escape = false
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.flake8-type-checking]
+strict = true
+
+[tool.ruff.lint.isort]
+combine-as-imports  = true
+lines-after-imports = 2
+lines-between-types = 1
+known-first-party   = ["detecting_motion"]
+
+[tool.ruff.lint.pycodestyle]
+ignore-overlong-task-comments = true
+max-doc-length                = 150
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 11
+
+[tool.flake8]
+max-line-length = 100
+max-doc-length = 150
+exclude = [
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "docs",
+    "assignment",
+    "venv",
+    ".bzr",
+    ".hg",
+    ".mypy_cache",
+    ".tox",
+    ".svn",
+    ".ruff_cache",
+    ".pytype",
+]
+
+[tool.mypy]
+python_version    = "3.10"
+files             = "detecting_motion"
+show_error_codes  = true
+strict            = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool"]
+cache_dir         = ".cache/.mypy_cache"
