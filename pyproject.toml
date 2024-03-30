@@ -26,7 +26,7 @@ requires      = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
-detect_motion = 'detecting_motion.motion_tracker_gui:_main'
+motion_tracker = 'detecting_motion.motion_tracker_gui:_main'
 
 [tool.black]
 line-length    = 100

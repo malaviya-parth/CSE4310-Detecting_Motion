@@ -13,7 +13,15 @@ import skvideo
 
 from PySide2.QtCore import Qt, QTimer, Slot
 from PySide2.QtGui import QImage, QPixmap
-from PySide2.QtWidgets import QApplication, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
+from PySide2.QtWidgets import (
+    QApplication,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QSlider,
+    QVBoxLayout,
+    QWidget,
+)
 
 from detecting_motion import ArgparseLogger, MotionDetection, setup_custom_logger
 
@@ -47,13 +55,20 @@ class GUI(QWidget):
         self.motion_detector = MotionDetection(A=5, T=10, D=50, S=2, N=13, size_threshold=10)
         self.motion_detector.initialize(self.frames[:3])
 
+        # Initialize UI components
+        self.init_ui()
+
+        # Set up the stylesheet
+        self.apply_stylesheet()
+
+    def init_ui(self) -> None:
+        """Initialize the user interface"""
         # Initialize Buttons
         self.button_next = QPushButton("Next Frame")
         self.button_back = QPushButton("Back 60 Frames")
         self.button_forward = QPushButton("Forward 60 Frames")
         self.button_play = QPushButton("Play Video")
         self.button_stop = QPushButton("Stop Video")
-
         self.button_stop.setEnabled(False)
 
         # Initialize the image label
@@ -75,20 +90,58 @@ class GUI(QWidget):
         # Set up the layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.img_label)
-        layout.addWidget(self.button_next)
-        layout.addWidget(self.button_back)
-        layout.addWidget(self.button_forward)
         layout.addWidget(self.frame_slider)
+
+        # Set up the Button layout
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.button_next)
+        button_layout.addWidget(self.button_back)
+        button_layout.addWidget(self.button_forward)
+        layout.addLayout(button_layout)
+
         layout.addWidget(self.button_play)
         layout.addWidget(self.button_stop)
 
+        # Set layout
+        self.setLayout(layout)
+
         # Connect functions
+        self.connect_signals()
+
+    def connect_signals(self) -> None:
+        """Connect signals to the corresponding slots."""
         self.button_next.clicked.connect(self.on_next_frame)
         self.button_back.clicked.connect(self.on_back_frames)
         self.button_forward.clicked.connect(self.on_forward_frames)
         self.frame_slider.sliderMoved.connect(self.on_slider_move)
         self.button_play.clicked.connect(self.play_video)
         self.button_stop.clicked.connect(self.stop_video)
+
+    def apply_stylesheet(self) -> None:
+        """Apply the stylesheet to the GUI components."""
+        self.setStyleSheet(
+            """
+            QWidget {
+                background-color: #EEEEEE;
+                font-family: Arial;
+            }
+            QPushButton {
+                background-color: #31363F;
+                color: white;
+                border-radius: 5px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #76ABAE;
+            }
+            QLabel {
+                color: #222831;
+            }
+            QSlider {
+                background: #222831;
+            }
+        """
+        )
 
     @staticmethod
     def frame_to_qimage(frame: np.ndarray, w: int, h: int, c: int) -> QImage:
