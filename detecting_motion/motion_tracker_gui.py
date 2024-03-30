@@ -30,23 +30,6 @@ class GUI(QWidget):
     and object tracking
     """
 
-    @staticmethod
-    def frame_to_qimage(frame: np.ndarray, w: int, h: int, c: int) -> QImage:
-        """Convert a video frame to a QImage object.
-
-        Args:
-            frame (np.ndarray): The video frame to be converted.
-            w (int): The width of the frame.
-            h (int): The height of the frame.
-            c (int): The number of channels in the frame.
-
-        Returns:
-            QImage: The QImage object representing the video frame.
-        """
-        if c == 1:
-            return QImage(frame, w, h, QImage.Format_Grayscale8)
-        return QImage(frame, w, h, QImage.Format_RGB888)
-
     def __init__(self, frames: list[np.ndarray]) -> None:
         """Initialize the GUI class for displaying video frames and tracking objects.
 
@@ -106,6 +89,23 @@ class GUI(QWidget):
         self.frame_slider.sliderMoved.connect(self.on_slider_move)
         self.button_play.clicked.connect(self.play_video)
         self.button_stop.clicked.connect(self.stop_video)
+
+    @staticmethod
+    def frame_to_qimage(frame: np.ndarray, w: int, h: int, c: int) -> QImage:
+        """Convert a video frame to a QImage object.
+
+        Args:
+            frame (np.ndarray): The video frame to be converted.
+            w (int): The width of the frame.
+            h (int): The height of the frame.
+            c (int): The number of channels in the frame.
+
+        Returns:
+            QImage: The QImage object representing the video frame.
+        """
+        if c == 1:
+            return QImage(frame, w, h, QImage.Format_Grayscale8)
+        return QImage(frame, w, h, QImage.Format_RGB888)
 
     def draw_tracked_objects(self, frame: np.ndarray, w: int, h: int, c: int) -> QImage:
         """Draw tracked objects and their trails on the frame.
