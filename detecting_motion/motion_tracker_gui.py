@@ -1,6 +1,7 @@
 """This module provides the main functionality for motion detection and object tracking."""
 
 import argparse
+import logging
 import sys
 import time
 
@@ -56,7 +57,7 @@ class GUI(QWidget):
         self.frames = frames
         self.current_frame = 0
 
-        # Video playback control attributes
+        # Video playback control attribute
         self.playback_active = False
 
         # Initialize the motion detector
@@ -159,11 +160,10 @@ class GUI(QWidget):
 
         # Large skip, process the new frame independently
         if skips > 3:
-            # self.motion_detector.reset_objects()
             self.motion_detector.update_with_skips(frame, skips)
         else:
             # Smaller skips, update as usual
-            self.motion_detector.update_with_skips(frame, skips)
+            self.motion_detector.update(frame)
 
         img = self.draw_tracked_objects(frame, w, h, c)
         self.img_label.setPixmap(QPixmap.fromImage(img))
@@ -232,7 +232,7 @@ class GUI(QWidget):
 
 
 def load_frames(video_path: str, num_frames: int = -1, grey: bool = False) -> list[np.ndarray]:
-    """Load video frames from a video file.
+    """Load the video frames from a video file.
 
     Args:
         video_path (str): The path to the video file.
@@ -243,6 +243,7 @@ def load_frames(video_path: str, num_frames: int = -1, grey: bool = False) -> li
         list[np.ndarray]: A list of video frames loaded from the video file.
     """
     try:
+        # Set the FFmpeg path for skvideo
         skvideo.setFFmpegPath("./detecting_motion/ffmpeg_essentials_build/bin")
         from skvideo.io import vread  # noqa: PLC0415
 
@@ -251,13 +252,14 @@ def load_frames(video_path: str, num_frames: int = -1, grey: bool = False) -> li
         else:
             frames = vread(video_path, as_grey=grey)
     except AssertionError:
+        # If the FFmpeg path does not get set, try loading the video with user's FFmpeg
         try:
             if num_frames > 0:
                 frames = vread(video_path, num_frames=num_frames, as_grey=grey)
             else:
                 frames = vread(video_path, as_grey=grey)
-        except Exception as e:  # noqa: BLE001
-            print(e)
+        except AssertionError:
+            logging.exception("FFmpeg path invalid or not found. Check the path and try again.")
             sys.exit(1)
 
     return frames

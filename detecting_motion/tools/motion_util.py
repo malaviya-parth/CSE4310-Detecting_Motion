@@ -14,12 +14,7 @@ class KalmanFilter:
     """
 
     def __init__(self) -> None:
-        """Initialize the Kalman Filter with default parameters.
-
-        The parameters include time step, state transition matrix, observation matrix,
-        process noise covariance, measurement noise covariance, estimate error covariance,
-        and initial state.
-        """
+        """Initialize the Kalman Filter with default parameters."""
         self.dt = 1  # Time step
         self.A = np.array(
             [[1, 0, self.dt, 0], [0, 1, 0, self.dt], [0, 0, 1, 0], [0, 0, 0, 1]]
@@ -33,7 +28,7 @@ class KalmanFilter:
     def predict(self) -> np.ndarray:
         """Perform the prediction step of the Kalman Filter.
 
-        Updates the state estimate and estimate error covariance using the state transition matrix.
+        Updates the state estimate and estimate error covariance using the initial state vector.
 
         Returns:
             np.ndarray: Updated state estimate after the prediction step.
@@ -45,9 +40,9 @@ class KalmanFilter:
         return self.x
 
     def update(self, y: np.ndarray) -> None:
-        """Perform the update step of the Kalman Filter.
+        """Update the Kalman Filter.
 
-        Incorporates the new observation into the state estimate.
+        Incorporates the new observation into the state vector.
 
         Args:
             y (np.ndarray): The new observation used for updating the filter.
@@ -58,7 +53,7 @@ class KalmanFilter:
         S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
         # Kalman Gain
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
-        # Update State Estimate
+        # Update State Vector
         self.x += np.dot(K, y)
         # Update Estimate Error Covariance
         identity_matrix = np.eye(self.H.shape[1])
@@ -82,17 +77,18 @@ class TrackedObject:
             kalman_filter (KalmanFilter): The Kalman filter associated with the tracked object.
             inactive_frames (int): The number of frames for which the object has been inactive.
         """
-        self.filter = kalman_filter
-        self.inactive_frames = inactive_frames
         # Initialize an empty list to store past positions
         self.previous_positions = []
+
+        self.filter = kalman_filter
+        self.inactive_frames = inactive_frames
 
 
 class MotionDetection:
     """Motion detection and object tracking system.
 
-    This class handles motion detection in video frames, object detection, and maintaining
-    a list of tracked objects with the help of a Kalman filter.
+    This class handles motion detection in the video frames, object detection, and maintaining
+    a list of tracked objects.
     """
 
     def __init__(  # noqa: PLR0913, PLR0917
@@ -187,15 +183,6 @@ class MotionDetection:
             obj.inactive_frames += 1
             obj.filter.predict()
 
-    def reset_objects(self) -> None:
-        """Reset the object tracking.
-
-        This method clears the current list of tracked objects, effectively reinitializing
-        the object tracking state. Used for starting a new tracking session or
-        when the scene significantly changes.
-        """
-        self.tracked_objects = []
-
     def update(self, frame: np.ndarray, initialize: bool = False) -> None:
         """Update the frame buffer and detect objects if necessary.
 
@@ -208,10 +195,8 @@ class MotionDetection:
         self.frame_buffer.append(frame)
 
         if len(self.frame_buffer) == 3:
-            # Compute the motion frame
             motion_frame = self.compute_motion()
             if not initialize:
-                # Detect and update object candidates
                 detected_objects = self.detect_objects(motion_frame)
                 self.update_tracked_objects(detected_objects)
 
