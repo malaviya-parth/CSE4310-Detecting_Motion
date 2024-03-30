@@ -1,3 +1,5 @@
+"""This module provides the main functionality for motion detection and object tracking."""
+
 import argparse
 import sys
 import time
@@ -15,11 +17,9 @@ from skimage.morphology import dilation, square
 
 # Set the path to the FFmpeg binary, which is required by skvideo
 #   -- Set a try and except later so that it can be used on different systems if installed
-skvideo.setFFmpegPath(
-    "C:\\Users\\Administrator\\Desktop\\School\\3_Detecting_Motion\\ffmpeg_essentials_build\\bin"
-)
+skvideo.setFFmpegPath("./detecting_motion/ffmpeg_essentials_build/bin")
 
-from skvideo.io import vread
+from skvideo.io import vread  # noqa: E402
 
 
 np.float = np.float64
