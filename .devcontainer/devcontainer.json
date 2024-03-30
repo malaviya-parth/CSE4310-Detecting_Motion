@@ -1,0 +1,50 @@
+{
+	"name": "3_Detecting_Motion",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode-remote.vscode-remote-extensionpack",
+				"ms-azuretools.vscode-docker",
+				"github.copilot",
+				"github.copilot-chat",
+				"visualstudioexptteam.vscodeintellicode",
+				"visualstudioexptteam.intellicode-api-usage-examples",
+				"eamodio.gitlens",
+				"ms-python.python",
+				"ms-python.vscode-pylance",
+				"ms-python.debugpy",
+				"donjayamanne.python-environment-manager",
+				"ms-python.black-formatter",
+				"charliermarsh.ruff",
+				"ms-python.flake8",
+				"ms-python.mypy-type-checker",
+				"njpwerner.autodocstring",
+				"streetsidesoftware.code-spell-checker",
+				"editorconfig.editorconfig",
+				"tamasfe.even-better-toml",
+				"yzhang.markdown-all-in-one",
+				"davidanson.vscode-markdownlint",
+				"shd101wyy.markdown-preview-enhanced",
+				"pkief.material-icon-theme"
+			]
+		}
+	},
+	"features": {
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"installOhMyZsh": true,
+			"installOhMyZshConfig": true,
+			"upgradePackages": true,
+			"username": "automatic",
+			"userUid": "1001",
+			"userGid": "automatic"
+		},
+		"ghcr.io/devcontainers-contrib/features/ffmpeg-apt-get:1": {}
+	},
+	"postStartCommand": "poetry install",
+	// 👇 Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
+	"remoteUser": "root"
+}

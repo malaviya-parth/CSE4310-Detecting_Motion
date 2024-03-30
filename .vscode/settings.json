@@ -1,0 +1,31 @@
+{
+    "workbench.colorTheme": "Default Dark+",
+    "workbench.iconTheme": "material-icon-theme",
+    "[python]": {
+        "diffEditor.ignoreTrimWhitespace": true,
+        "editor.formatOnType": true,
+        "editor.formatOnSave": true,
+        "editor.wordBasedSuggestions": "matchingDocuments",
+        "editor.defaultFormatter": "ms-python.black-formatter",
+        "editor.rulers": [
+            100,
+            150
+        ],
+    },
+    "black-formatter.args": [
+        "--config",
+        "${workspaceFolder}/pyproject.toml"
+    ],
+    "mypy-type-checker.args": [
+        "--config-file",
+        "${workspaceFolder}/pyproject.toml"
+    ],
+    "flake8.enabled": true,
+    "flake8.args": [
+        "--config",
+        "${workspaceFolder}/pyproject.toml"
+    ],
+    "files.associations": {
+        "*.toml": "toml"
+    },
+}

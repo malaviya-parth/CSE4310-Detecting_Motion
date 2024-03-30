@@ -8,14 +8,14 @@ packages    = [{ include = "detecting_motion" }]
 
 [tool.poetry.dependencies]
 python       = ">=3.10,<3.11"
-numpy        = "^1.26.3"
-pyside2      = "^5.15.2.1"
+numpy        = "^1.26.4"
 scikit-video = "^1.1.11"
-
+pyside2      = "^5.15.2.1"
+scikit-image = "^0.22.0"
 
 [tool.poetry.group.dev.dependencies]
-black            = "^23.12.1"
-ruff             = "^0.2.1"
+black            = "^24.3.0"
+ruff             = "^0.3.0"
 flake8           = "^7.0.0"
 mypy             = "^1.8.0"
 flake8-pyproject = "^1.2.3"
