@@ -112,52 +112,6 @@ class MotionDetection:
         self.frame_buffer = []  # type: list[np.ndarray]
         self.tracked_objects = []  # type: list[TrackedObject]
 
-    def initialize(self, frames: list[np.ndarray]) -> None:
-        """Initialize the detector with the first set of frames.
-
-        Args:
-            frames (list[np.ndarray]): List of initial frames for the detector.
-
-        Raises:
-            ValueError: If less than 3 frames are provided for initialization.
-        """
-        if len(frames) < 3:
-            raise ValueError("At least 3 frames are needed for initialization")
-        for frame in frames[:3]:
-            self.update(frame, initialize=True)
-
-    def update(self, frame: np.ndarray, initialize: bool = False) -> None:
-        """Update the frame buffer and detect objects if necessary.
-
-        Args:
-            frame (np.ndarray): The new frame to be added to the buffer.
-            initialize (bool): Flag to indicate if this is part of initialization. (Default: False)
-        """
-        if len(self.frame_buffer) >= 3:
-            self.frame_buffer.pop(0)
-        self.frame_buffer.append(frame)
-
-        if len(self.frame_buffer) == 3:
-            # Compute the motion frame
-            motion_frame = self.compute_motion()
-            if not initialize:
-                # Detect and update object candidates
-                detected_objects = self.detect_objects(motion_frame)
-                self.update_tracked_objects(detected_objects)
-
-    def compute_motion(self) -> np.ndarray:
-        """Compute the motion frame based on differences between consecutive frames.
-
-        Returns:
-            np.ndarray: The motion frame computed from the current frame buffer.
-        """
-        frame1, frame2, frame3 = self.frame_buffer
-        diff1 = cv2.absdiff(frame1, frame2)
-        diff2 = cv2.absdiff(frame2, frame3)
-        motion_frame = cv2.bitwise_and(diff1, diff2)
-        _, thresh = cv2.threshold(motion_frame, self.motion_threshold, 255, cv2.THRESH_BINARY)
-        return thresh
-
     def detect_objects(self, motion_frame: np.ndarray) -> list[regionprops]:
         """Detect objects in the motion frame.
 
@@ -176,6 +130,19 @@ class MotionDetection:
         labeled_frame = label(dilated_frame)
         objects = regionprops(labeled_frame)
         return [obj for obj in objects if obj.area >= self.size_threshold]
+
+    def compute_motion(self) -> np.ndarray:
+        """Compute the motion frame based on differences between consecutive frames.
+
+        Returns:
+            np.ndarray: The motion frame computed from the current frame buffer.
+        """
+        frame1, frame2, frame3 = self.frame_buffer
+        diff1 = cv2.absdiff(frame1, frame2)
+        diff2 = cv2.absdiff(frame2, frame3)
+        motion_frame = cv2.bitwise_and(diff1, diff2)
+        _, thresh = cv2.threshold(motion_frame, self.motion_threshold, 255, cv2.THRESH_BINARY)
+        return thresh
 
     def update_tracked_objects(self, detected_objects: list[regionprops]) -> None:
         """Update the list of tracked objects based on detected objects.
@@ -212,6 +179,34 @@ class MotionDetection:
             obj.inactive_frames += 1
             obj.filter.predict()
 
+    def reset_objects(self) -> None:
+        """Reset the object tracking.
+
+        This method clears the current list of tracked objects, effectively reinitializing
+        the object tracking state. Used for starting a new tracking session or
+        when the scene significantly changes.
+        """
+        self.tracked_objects = []
+
+    def update(self, frame: np.ndarray, initialize: bool = False) -> None:
+        """Update the frame buffer and detect objects if necessary.
+
+        Args:
+            frame (np.ndarray): The new frame to be added to the buffer.
+            initialize (bool): Flag to indicate if this is part of initialization. (Default: False)
+        """
+        if len(self.frame_buffer) >= 3:
+            self.frame_buffer.pop(0)
+        self.frame_buffer.append(frame)
+
+        if len(self.frame_buffer) == 3:
+            # Compute the motion frame
+            motion_frame = self.compute_motion()
+            if not initialize:
+                # Detect and update object candidates
+                detected_objects = self.detect_objects(motion_frame)
+                self.update_tracked_objects(detected_objects)
+
     def update_with_skips(self, frame: np.ndarray, skips: int) -> None:
         """Update the frame buffer and object tracking with a specified number of frame skips.
 
@@ -229,14 +224,19 @@ class MotionDetection:
                     obj.previous_positions = obj.previous_positions[-10:]  # Limit trail history
         self.update(frame)
 
-    def reset_objects(self) -> None:
-        """Reset the object tracking.
+    def initialize(self, frames: list[np.ndarray]) -> None:
+        """Initialize the detector with the first set of frames.
 
-        This method clears the current list of tracked objects, effectively reinitializing
-        the object tracking state. Used for starting a new tracking session or
-        when the scene significantly changes.
+        Args:
+            frames (list[np.ndarray]): List of initial frames for the detector.
+
+        Raises:
+            ValueError: If less than 3 frames are provided for initialization.
         """
-        self.tracked_objects = []
+        if len(frames) < 3:
+            raise ValueError("At least 3 frames are needed for initialization")
+        for frame in frames[:3]:
+            self.update(frame, initialize=True)
 
 
 class TrackedObject:
@@ -267,91 +267,8 @@ class QtDemo(QWidget):
     and object tracking
     """
 
-    def __init__(self, frames: list[np.ndarray]) -> None:
-        """Initialize the QtDemo class for displaying video frames and tracking objects.
-
-        Args:
-            frames (list[np.ndarray]): A list of video frames to be processed and displayed.
-        """
-        super().__init__()
-        self.frames = frames
-        self.current_frame = 0
-
-        # Initialize the motion detector
-        self.motion_detector = MotionDetection(A=5, T=10, D=50, S=2, N=13, size_threshold=10)
-        self.motion_detector.initialize(self.frames[:3])
-
-        # UI Components
-        self.button_next = QPushButton("Next Frame")
-        self.button_back = QPushButton("Back 60 Frames")
-        self.button_forward = QPushButton("Forward 60 Frames")
-        self.img_label = QLabel(alignment=Qt.AlignCenter)
-        self.frame_slider = QSlider(Qt.Orientation.Horizontal)
-        self.setup_ui()
-
-        # Connect functions
-        self.button_next.clicked.connect(self.on_next_frame)
-        self.button_back.clicked.connect(self.on_back_frames)
-        self.button_forward.clicked.connect(self.on_forward_frames)
-        self.frame_slider.sliderMoved.connect(self.on_slider_move)
-
-    def setup_ui(self) -> None:
-        """Configure the UI elements of the application."""
-        h, w, c = self.frames[0].shape
-        img = self.convert_frame_to_qimage(self.frames[0], w, h, c)
-        self.img_label.setPixmap(QPixmap.fromImage(img))
-
-        self.frame_slider.setTickInterval(1)
-        self.frame_slider.setMinimum(0)
-        self.frame_slider.setMaximum(len(self.frames) - 1)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self.img_label)
-        layout.addWidget(self.button_next)
-        layout.addWidget(self.button_back)
-        layout.addWidget(self.button_forward)
-        layout.addWidget(self.frame_slider)
-
-        self.button_play = QPushButton("Play Video")
-        self.button_stop = QPushButton("Stop Video")
-        self.button_stop.setEnabled(False)
-
-        layout.addWidget(self.button_play)
-        layout.addWidget(self.button_stop)
-
-        # Connect new buttons to their functions
-        self.button_play.clicked.connect(self.play_video)
-        self.button_stop.clicked.connect(self.stop_video)
-
-        # Video playback control attributes
-        self.playback_active = False
-
-    def play_video(self) -> None:
-        """Start the video playback."""
-        self.playback_active = True
-        self.button_play.setEnabled(False)
-        self.button_stop.setEnabled(True)
-        self.video_thread = Thread(target=self.update_video_frame, daemon=True)
-        self.video_thread.start()
-
-    def stop_video(self) -> None:
-        """Stop the video playback."""
-        self.playback_active = False
-        self.button_play.setEnabled(True)
-        self.button_stop.setEnabled(False)
-
-    def update_video_frame(self) -> None:
-        """Continuously update the video frame during playback.
-
-        This method is intended to be run in a separate thread for video playback.
-        It increments the current frame and updates the frame display.
-        """
-        while self.playback_active and self.current_frame < len(self.frames) - 1:
-            self.current_frame += 1
-            self.update_frame()
-            time.sleep(1 / 30.0)  # Assuming 30 FPS
-
-    def convert_frame_to_qimage(self, frame: np.ndarray, w: int, h: int, c: int) -> QImage:
+    @staticmethod
+    def frame_to_qimage(frame: np.ndarray, w: int, h: int, c: int) -> QImage:
         """Convert a video frame to a QImage object.
 
         Args:
@@ -366,6 +283,62 @@ class QtDemo(QWidget):
         if c == 1:
             return QImage(frame, w, h, QImage.Format_Grayscale8)
         return QImage(frame, w, h, QImage.Format_RGB888)
+
+    def __init__(self, frames: list[np.ndarray]) -> None:
+        """Initialize the QtDemo class for displaying video frames and tracking objects.
+
+        Args:
+            frames (list[np.ndarray]): A list of video frames to be processed and displayed.
+        """
+        super().__init__()
+        self.frames = frames
+        self.current_frame = 0
+
+        # Video playback control attributes
+        self.playback_active = False
+
+        # Initialize the motion detector
+        self.motion_detector = MotionDetection(A=5, T=10, D=50, S=2, N=13, size_threshold=10)
+        self.motion_detector.initialize(self.frames[:3])
+
+        # Initialize Buttons
+        self.button_next = QPushButton("Next Frame")
+        self.button_back = QPushButton("Back 60 Frames")
+        self.button_forward = QPushButton("Forward 60 Frames")
+        self.button_play = QPushButton("Play Video")
+        self.button_stop = QPushButton("Stop Video")
+
+        self.button_stop.setEnabled(False)
+
+        # Initialize the image label
+        self.img_label = QLabel(alignment=Qt.AlignCenter)
+        h, w, c = self.frames[0].shape
+        img = self.frame_to_qimage(self.frames[0], w, h, c)
+        self.img_label.setPixmap(QPixmap.fromImage(img))
+
+        # Initialize the slider
+        self.frame_slider = QSlider(Qt.Orientation.Horizontal)
+        self.frame_slider.setTickInterval(1)
+        self.frame_slider.setMinimum(0)
+        self.frame_slider.setMaximum(len(self.frames) - 1)
+
+        # Set up the layout
+        layout = QVBoxLayout(self)
+        layout.addWidget(self.img_label)
+        layout.addWidget(self.button_next)
+        layout.addWidget(self.button_back)
+        layout.addWidget(self.button_forward)
+        layout.addWidget(self.frame_slider)
+        layout.addWidget(self.button_play)
+        layout.addWidget(self.button_stop)
+
+        # Connect functions
+        self.button_next.clicked.connect(self.on_next_frame)
+        self.button_back.clicked.connect(self.on_back_frames)
+        self.button_forward.clicked.connect(self.on_forward_frames)
+        self.frame_slider.sliderMoved.connect(self.on_slider_move)
+        self.button_play.clicked.connect(self.play_video)
+        self.button_stop.clicked.connect(self.stop_video)
 
     def draw_tracked_objects(self, frame: np.ndarray, w: int, h: int, c: int) -> QImage:
         """Draw tracked objects and their trails on the frame.
@@ -388,7 +361,52 @@ class QtDemo(QWidget):
             for pos in obj.previous_positions:
                 cv2.circle(frame, (int(pos[0]), int(pos[1])), 2, (0, 255, 0), -1)
 
-        return self.convert_frame_to_qimage(frame, w, h, c)
+        return self.frame_to_qimage(frame, w, h, c)
+
+    def update_frame(self) -> None:
+        """Update the current frame and redraw tracked objects."""
+        frame = self.frames[self.current_frame].copy()
+        h, w, c = frame.shape
+        self.motion_detector.update(frame)
+
+        img = self.draw_tracked_objects(frame, w, h, c)
+        self.img_label.setPixmap(QPixmap.fromImage(img))
+        self.frame_slider.setValue(self.current_frame)
+        # Reinitialize the motion detector if the user revisits a frame
+        if self.current_frame < len(self.motion_detector.frame_buffer):
+            self.motion_detector.initialize(self.frames[: self.current_frame + 1])
+
+    def update_frame_with_skips(self, skips: int) -> None:
+        """Update the frame considering the number of frame skips.
+
+        Args:
+            skips (int): The number of frames skipped.
+        """
+        frame = self.frames[self.current_frame].copy()
+        h, w, c = frame.shape
+
+        # Large skip, process the new frame independently
+        if skips > 3:
+            self.motion_detector.reset_objects()
+            self.motion_detector.update(frame)
+        else:
+            # Smaller skips, update as usual
+            self.motion_detector.update(frame)
+
+        img = self.draw_tracked_objects(frame, w, h, c)
+        self.img_label.setPixmap(QPixmap.fromImage(img))
+        self.frame_slider.setValue(self.current_frame)
+
+    def update_video_frame(self) -> None:
+        """Continuously update the video frame during playback.
+
+        This method is intended to be ran in a separate thread for video playback.
+        It increments the current frame and updates the frame display.
+        """
+        while self.playback_active and self.current_frame < len(self.frames) - 1:
+            self.current_frame += 1
+            self.update_frame()
+            time.sleep(1 / 30.0)  # Assuming 30 FPS
 
     @Slot()
     def on_next_frame(self) -> None:
@@ -425,39 +443,21 @@ class QtDemo(QWidget):
         skips = abs(self.current_frame - previous_frame)
         self.update_frame_with_skips(skips)
 
-    def update_frame(self) -> None:
-        """Update the current frame and redraw tracked objects."""
-        frame = self.frames[self.current_frame].copy()
-        h, w, c = frame.shape
-        self.motion_detector.update(frame)
+    @Slot()
+    def play_video(self) -> None:
+        """Start the video playback."""
+        self.playback_active = True
+        self.button_play.setEnabled(False)
+        self.button_stop.setEnabled(True)
+        self.video_thread = Thread(target=self.update_video_frame, daemon=True)
+        self.video_thread.start()
 
-        img = self.draw_tracked_objects(frame, w, h, c)
-        self.img_label.setPixmap(QPixmap.fromImage(img))
-        self.frame_slider.setValue(self.current_frame)
-        # Reinitialize the motion detector if the user revisits a frame
-        if self.current_frame < len(self.motion_detector.frame_buffer):
-            self.motion_detector.initialize(self.frames[: self.current_frame + 1])
-
-    def update_frame_with_skips(self, skips: int) -> None:
-        """Update the frame considering the number of frame skips.
-
-        Args:
-            skips (int): The number of frames skipped.
-        """
-        frame = self.frames[self.current_frame].copy()
-        h, w, c = frame.shape
-
-        # Large skip, process the new frame independently
-        if skips > 3:
-            self.motion_detector.reset_objects()
-            self.motion_detector.update(frame)
-        else:
-            # Smaller skips, update as usual
-            self.motion_detector.update(frame)
-
-        img = self.draw_tracked_objects(frame, w, h, c)
-        self.img_label.setPixmap(QPixmap.fromImage(img))
-        self.frame_slider.setValue(self.current_frame)
+    @Slot()
+    def stop_video(self) -> None:
+        """Stop the video playback."""
+        self.playback_active = False
+        self.button_play.setEnabled(True)
+        self.button_stop.setEnabled(False)
 
 
 if __name__ == "__main__":
