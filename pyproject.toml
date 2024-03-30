@@ -7,11 +7,12 @@ readme      = "README.md"
 packages    = [{ include = "detecting_motion" }]
 
 [tool.poetry.dependencies]
-python       = ">=3.10,<3.11"
-numpy        = "^1.26.4"
-scikit-video = "^1.1.11"
-pyside2      = "^5.15.2.1"
-scikit-image = "^0.22.0"
+python        = ">=3.10,<3.11"
+numpy         = "^1.26.4"
+scikit-video  = "^1.1.11"
+pyside2       = "^5.15.2.1"
+scikit-image  = "^0.22.0"
+opencv-python = "^4.9.0.80"
 
 [tool.poetry.group.dev.dependencies]
 black            = "^24.3.0"
@@ -25,6 +26,7 @@ requires      = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry.scripts]
+detect_motion = 'detecting_motion.motion_tracker_gui:_main'
 
 [tool.black]
 line-length    = 100
