@@ -246,14 +246,14 @@ class TrackedObject:
     history of positions and the number of frames it has been inactive.
     """
 
-    def __init__(self, filter: KalmanFilter, inactive_frames: int) -> None:
+    def __init__(self, kalman_filter: KalmanFilter, inactive_frames: int) -> None:
         """Initialize a TrackedObject with a Kalman filter and an inactive frame counter.
 
         Args:
-            filter (KalmanFilter): The Kalman filter associated with the tracked object.
+            kalman_filter (KalmanFilter): The Kalman filter associated with the tracked object.
             inactive_frames (int): The number of frames for which the object has been inactive.
         """
-        self.filter = filter
+        self.filter = kalman_filter
         self.inactive_frames = inactive_frames
         # Initialize an empty list to store past positions
         self.previous_positions = []
