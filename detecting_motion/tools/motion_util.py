@@ -28,7 +28,7 @@ class KalmanFilter:
         self.Q = np.eye(4) * 0.05  # Process noise covariance
         self.R = np.eye(2) * 50000  # Measurement noise covariance
         self.P = np.eye(4) * 200000  # Estimate error covariance
-        self.x = np.zeros((4, 1))  # Initial state (x, y, vx, vy)
+        self.x = np.zeros((4, 1))  # Initial state vector
 
     def predict(self) -> np.ndarray:
         """Perform the prediction step of the Kalman Filter.
@@ -38,7 +38,9 @@ class KalmanFilter:
         Returns:
             np.ndarray: Updated state estimate after the prediction step.
         """
+        # State Prediction
         self.x = np.dot(self.A, self.x)
+        # Estimate Error Covariance Prediction
         self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
         return self.x
 
@@ -50,14 +52,20 @@ class KalmanFilter:
         Args:
             y (np.ndarray): The new observation used for updating the filter.
         """
+        # Observation Residual
         y = y - np.dot(self.H, self.x)
+        # Residual Covariance
         S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
+        # Kalman Gain
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
+        # Update State Estimate
         self.x += np.dot(K, y)
-        I = np.eye(self.H.shape[1])
-        self.P = np.dot(np.dot(I - np.dot(K, self.H), self.P), (I - np.dot(K, self.H)).T) + np.dot(
-            np.dot(K, self.R), K.T
-        )
+        # Update Estimate Error Covariance
+        identity_matrix = np.eye(self.H.shape[1])
+        self.P = np.dot(
+            np.dot(identity_matrix - np.dot(K, self.H), self.P),
+            (identity_matrix - np.dot(K, self.H)).T,
+        ) + np.dot(np.dot(K, self.R), K.T)
 
 
 class TrackedObject:
