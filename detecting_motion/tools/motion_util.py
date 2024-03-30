@@ -8,10 +8,9 @@ from skimage.morphology import dilation, square
 
 
 class KalmanFilter:
-    """A simple implementation of the Kalman Filter for object tracking.
+    """A basic Kalman filter implementation for object tracking.
 
-    This class provides methods for predicting and updating the state of a tracked object
-    based on linear motion models.
+    This class provides methods for predicting and updating the state of a tracked object.
     """
 
     def __init__(self) -> None:
@@ -24,7 +23,7 @@ class KalmanFilter:
         self.dt = 1  # Time step
         self.A = np.array(
             [[1, 0, self.dt, 0], [0, 1, 0, self.dt], [0, 0, 1, 0], [0, 0, 0, 1]]
-        )  # State transition matrix
+        )  # Transition matrix
         self.H = np.array([[1, 0, 0, 0], [0, 1, 0, 0]])  # Observation matrix
         self.Q = np.eye(4) * 0.05  # Process noise covariance
         self.R = np.eye(2) * 50000  # Measurement noise covariance
@@ -43,15 +42,15 @@ class KalmanFilter:
         self.P = np.dot(np.dot(self.A, self.P), self.A.T) + self.Q
         return self.x
 
-    def update(self, z: np.ndarray) -> None:
+    def update(self, y: np.ndarray) -> None:
         """Perform the update step of the Kalman Filter.
 
         Incorporates the new observation into the state estimate.
 
         Args:
-            z (np.ndarray): The new observation used for updating the filter.
+            y (np.ndarray): The new observation used for updating the filter.
         """
-        y = z - np.dot(self.H, self.x)
+        y = y - np.dot(self.H, self.x)
         S = np.dot(self.H, np.dot(self.P, self.H.T)) + self.R
         K = np.dot(np.dot(self.P, self.H.T), np.linalg.inv(S))
         self.x += np.dot(K, y)
@@ -59,6 +58,26 @@ class KalmanFilter:
         self.P = np.dot(np.dot(I - np.dot(K, self.H), self.P), (I - np.dot(K, self.H)).T) + np.dot(
             np.dot(K, self.R), K.T
         )
+
+
+class TrackedObject:
+    """Represents a single tracked object in the motion detection system.
+
+    This class keeps track of an object's state using a Kalman filter, and stores its
+    history of positions and the number of frames it has been inactive.
+    """
+
+    def __init__(self, kalman_filter: KalmanFilter, inactive_frames: int) -> None:
+        """Initialize a TrackedObject with a Kalman filter and an inactive frame counter.
+
+        Args:
+            kalman_filter (KalmanFilter): The Kalman filter associated with the tracked object.
+            inactive_frames (int): The number of frames for which the object has been inactive.
+        """
+        self.filter = kalman_filter
+        self.inactive_frames = inactive_frames
+        # Initialize an empty list to store past positions
+        self.previous_positions = []
 
 
 class MotionDetection:
@@ -77,7 +96,7 @@ class MotionDetection:
             A (int): Frame hysteresis.
             T (int): Motion threshold.
             D (int): Distance threshold.
-            S (int): Frame skip.
+            S (int): Number of frames to skip between detections.
             N (int): Maximum number of objects.
             size_threshold (int): Size threshold for object detection.
         """
@@ -92,6 +111,19 @@ class MotionDetection:
         # State variables
         self.frame_buffer = []  # type: list[np.ndarray]
         self.tracked_objects = []  # type: list[TrackedObject]
+
+    def compute_motion(self) -> np.ndarray:
+        """Compute the motion frame based on differences between consecutive frames.
+
+        Returns:
+            np.ndarray: The motion frame computed from the current frame buffer.
+        """
+        frame1, frame2, frame3 = self.frame_buffer
+        diff1 = cv2.absdiff(frame1, frame2)
+        diff2 = cv2.absdiff(frame2, frame3)
+        motion_frame = cv2.bitwise_and(diff1, diff2)
+        _, threshold = cv2.threshold(motion_frame, self.motion_threshold, 255, cv2.THRESH_BINARY)
+        return threshold
 
     def detect_objects(self, motion_frame: np.ndarray) -> list[regionprops]:
         """Detect objects in the motion frame.
@@ -111,19 +143,6 @@ class MotionDetection:
         labeled_frame = label(dilated_frame)
         objects = regionprops(labeled_frame)
         return [obj for obj in objects if obj.area >= self.size_threshold]
-
-    def compute_motion(self) -> np.ndarray:
-        """Compute the motion frame based on differences between consecutive frames.
-
-        Returns:
-            np.ndarray: The motion frame computed from the current frame buffer.
-        """
-        frame1, frame2, frame3 = self.frame_buffer
-        diff1 = cv2.absdiff(frame1, frame2)
-        diff2 = cv2.absdiff(frame2, frame3)
-        motion_frame = cv2.bitwise_and(diff1, diff2)
-        _, threshold = cv2.threshold(motion_frame, self.motion_threshold, 255, cv2.THRESH_BINARY)
-        return threshold
 
     def update_tracked_objects(self, detected_objects: list[regionprops]) -> None:
         """Update the list of tracked objects based on detected objects.
@@ -218,23 +237,3 @@ class MotionDetection:
             raise ValueError("At least 3 frames are needed for initialization")
         for frame in frames[:3]:
             self.update(frame, initialize=True)
-
-
-class TrackedObject:
-    """Represents a single tracked object in the motion detection system.
-
-    This class keeps track of an object's state using a Kalman filter, and stores its
-    history of positions and the number of frames it has been inactive.
-    """
-
-    def __init__(self, kalman_filter: KalmanFilter, inactive_frames: int) -> None:
-        """Initialize a TrackedObject with a Kalman filter and an inactive frame counter.
-
-        Args:
-            kalman_filter (KalmanFilter): The Kalman filter associated with the tracked object.
-            inactive_frames (int): The number of frames for which the object has been inactive.
-        """
-        self.filter = kalman_filter
-        self.inactive_frames = inactive_frames
-        # Initialize an empty list to store past positions
-        self.previous_positions = []
