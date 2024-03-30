@@ -2,13 +2,11 @@ import argparse
 import sys
 import time
 
-from threading import Thread
-
 import cv2
 import numpy as np
 import skvideo
 
-from PySide2.QtCore import Qt, Slot
+from PySide2.QtCore import Qt, QTimer, Slot
 from PySide2.QtGui import QImage, QPixmap
 from PySide2.QtWidgets import QApplication, QLabel, QPushButton, QSlider, QVBoxLayout, QWidget
 from skimage.measure import label, regionprops
@@ -322,6 +320,10 @@ class QtDemo(QWidget):
         self.frame_slider.setMinimum(0)
         self.frame_slider.setMaximum(len(self.frames) - 1)
 
+        # QTimer for video playback
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update_frame)
+
         # Set up the layout
         layout = QVBoxLayout(self)
         layout.addWidget(self.img_label)
@@ -365,13 +367,17 @@ class QtDemo(QWidget):
 
     def update_frame(self) -> None:
         """Update the current frame and redraw tracked objects."""
-        frame = self.frames[self.current_frame].copy()
-        h, w, c = frame.shape
-        self.motion_detector.update(frame)
+        if self.current_frame < len(self.frames) - 1:
+            self.current_frame += 1
+            frame = self.frames[self.current_frame].copy()
+            h, w, c = frame.shape
+            self.motion_detector.update(frame)
 
-        img = self.draw_tracked_objects(frame, w, h, c)
-        self.img_label.setPixmap(QPixmap.fromImage(img))
-        self.frame_slider.setValue(self.current_frame)
+            img = self.draw_tracked_objects(frame, w, h, c)
+            self.img_label.setPixmap(QPixmap.fromImage(img))
+            self.frame_slider.setValue(self.current_frame)
+        else:
+            self.timer.stop()  # Stop the timer if it's the last frame
         # Reinitialize the motion detector if the user revisits a frame
         if self.current_frame < len(self.motion_detector.frame_buffer):
             self.motion_detector.initialize(self.frames[: self.current_frame + 1])
@@ -387,11 +393,11 @@ class QtDemo(QWidget):
 
         # Large skip, process the new frame independently
         if skips > 3:
-            self.motion_detector.reset_objects()
-            self.motion_detector.update(frame)
+            # self.motion_detector.reset_objects()
+            self.motion_detector.update_with_skips(frame, skips)
         else:
             # Smaller skips, update as usual
-            self.motion_detector.update(frame)
+            self.motion_detector.update_with_skips(frame, skips)
 
         img = self.draw_tracked_objects(frame, w, h, c)
         self.img_label.setPixmap(QPixmap.fromImage(img))
@@ -400,7 +406,6 @@ class QtDemo(QWidget):
     def update_video_frame(self) -> None:
         """Continuously update the video frame during playback.
 
-        This method is intended to be ran in a separate thread for video playback.
         It increments the current frame and updates the frame display.
         """
         while self.playback_active and self.current_frame < len(self.frames) - 1:
@@ -449,8 +454,7 @@ class QtDemo(QWidget):
         self.playback_active = True
         self.button_play.setEnabled(False)
         self.button_stop.setEnabled(True)
-        self.video_thread = Thread(target=self.update_video_frame, daemon=True)
-        self.video_thread.start()
+        self.timer.start(33)  # Start the timer with interval in ms (33ms for ~30FPS)
 
     @Slot()
     def stop_video(self) -> None:
@@ -458,6 +462,7 @@ class QtDemo(QWidget):
         self.playback_active = False
         self.button_play.setEnabled(True)
         self.button_stop.setEnabled(False)
+        self.timer.stop()  # Stop the timer
 
 
 if __name__ == "__main__":
