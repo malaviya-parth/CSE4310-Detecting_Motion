@@ -1,4 +1,4 @@
-"""This module custom utilities for logging and argument parsing."""
+"""This module provides custom utilities for logging and argument handling."""
 
 import argparse
 import logging
@@ -9,14 +9,14 @@ from types import TracebackType
 from typing import ClassVar
 
 
-class ArgparseLogger(argparse.ArgumentParser):
-    """Subclass of argparse.ArgumentParser that logs errors using a custom logger."""
+class LoggingArgumentParser(argparse.ArgumentParser):
+    """Extended argparse.ArgumentParser that logs errors using a specified logger."""
 
-    def __init__(self, logger, *args, **kwargs) -> None:  # noqa: ANN003, ANN002, ANN001
-        """Initialize the ArgparseLogger class.
+    def __init__(self, logger: Logger, *args, **kwargs) -> None:
+        """Initialize the LoggingArgumentParser class.
 
         Args:
-            logger: The custom logger to be used.
+            logger: The logger instance used for logging errors.
             *args: Additional positional arguments.
             **kwargs: Additional keyword arguments.
         """
@@ -24,19 +24,18 @@ class ArgparseLogger(argparse.ArgumentParser):
         self.logger = logger
 
     def error(self, message: str) -> None:
-        """Overrides the default error method to log parsing errors using the custom logger."""
-        full_message = f"{self.prog}: error: {message}"
-        self.logger.error(full_message)  # Log the actual argparse error message
+        """Override the default error method to log parsing errors using the provided logger."""
+        formatted_message = f"{self.prog}: error: {message}"
+        self.logger.error(formatted_message)  # Log the argparse error message
         self.print_help(sys.stderr)
-        self.exit(2, full_message + "\n")
+        self.exit(2, formatted_message + "\n")
 
 
-class ColorLogFormatter(logging.Formatter):
-    """A custom log formatter that adds color to log levels.
+class ColoredLogFormatter(logging.Formatter):
+    """Custom log formatter that applies colors to different log levels.
 
     Attributes:
-        fmt (str): The format string used to format the log message.
-        COLORS (dict): A dictionary mapping log levels to their respective ANSI color codes.
+        COLORS (dict): Dictionary mapping log levels to ANSI color codes.
     """
 
     COLORS: ClassVar[dict] = {
@@ -48,37 +47,44 @@ class ColorLogFormatter(logging.Formatter):
     }
 
     def format(self, record: LogRecord) -> str:
-        """Format the specified record with color.
+        """Format the log record with color.
 
         Args:
             record (logging.LogRecord): The log record to be formatted.
 
         Returns:
-            str: A formatted string with color based on the log level.
+            str: A color-formatted string based on the log level.
         """
-        colored_record = logging.Formatter.format(self, record)
+        formatted_record = super().format(record)
         levelno = record.levelno
-        return f"{self.COLORS.get(levelno, '')}{colored_record}\033[0m"  # Reset to default
+        return f"{self.COLORS.get(levelno, '')}{formatted_record}\033[0m"  # Reset to default
 
 
-def setup_custom_logger(name: str | None = None) -> Logger:
-    """Sets up a global logger with custom formatting and a global exception handler."""
+def configure_logger(name: str | None = None) -> Logger:
+    """Setup a logger with custom formatting and a global exception handler.
+
+    Args:
+        name (str | None): The name of the logger. If None, the root logger is configured.
+
+    Returns:
+        Logger: Configured logger instance.
+    """
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
     handler = logging.StreamHandler()
-    formatter = ColorLogFormatter("%(asctime)s - %(levelname)s - %(message)s")
+    formatter = ColoredLogFormatter("%(asctime)s - %(levelname)s - %(message)s")
     handler.setFormatter(formatter)
     logger.addHandler(handler)
 
     # Global exception handler
-    def handle_exception(
+    def handle_global_exception(
         exc_type: type[BaseException], exc_value: BaseException, exc_traceback: TracebackType
     ) -> None:
         if issubclass(exc_type, KeyboardInterrupt):
             sys.__excepthook__(exc_type, exc_value, exc_traceback)
             return
-        logger.critical(f"{exc_type}", exc_info=(exc_type, exc_value, exc_traceback))
+        logger.critical(f"Unhandled exception: {exc_type}", exc_info=(exc_type, exc_value, exc_traceback))
 
-    sys.excepthook = handle_exception
+    sys.excepthook = handle_global_exception
     return logger
